@@ -61,37 +61,46 @@ def classify_and_draft(sender: str, subject: str, snippet: str) -> dict:
 def run_triage(dry_run: bool = True, max_results: int = 3):
     print(f"🚀 AgentKit Inbound Lead Triage Agent starting (dry_run={dry_run}, max_results={max_results})...")
     
-    # 1. Fetch unread emails
+    # 1. Fetch unread emails via Composio
+    messages = []
     try:
         fetch_res = execute_composio("GMAIL_FETCH_EMAILS", {
             "query": "is:unread",
             "max_results": max_results,
             "user_id": "me"
         })
+        messages = fetch_res.get("messages", [])
     except Exception as e:
-        print(f"⚠️ Failed to fetch live emails via Composio (may need re-auth or no unread mail): {e}")
-        print("💡 Falling back to simulated inbound lead for demonstration...")
-        fetch_res = {
-            "messages": [
-                {
-                    "id": "simulated_lead_001",
-                    "threadId": "thread_sim_001",
-                    "snippet": "Hi, I'm interested in enterprise pricing and custom packs for my real estate agency.",
-                    "payload": {
-                        "headers": [
-                            {"name": "Subject", "value": "Enterprise pricing & real estate agent packs"},
-                            {"name": "From", "value": "buyer@sydneyrealestate.example.com"}
-                        ]
-                    }
+        print(f"⚠️ Failed to fetch live emails via Composio: {e}")
+
+    if not messages:
+        print("💡 Using simulated inbound test leads for demonstration...")
+        messages = [
+            {
+                "id": "simulated_lead_001",
+                "threadId": "thread_sim_001",
+                "snippet": "Hi, I'm interested in enterprise pricing and custom packs for my real estate agency.",
+                "payload": {
+                    "headers": [
+                        {"name": "Subject", "value": "Enterprise pricing & real estate agent packs"},
+                        {"name": "From", "value": "buyer@sydneyrealestate.example.com"}
+                    ]
                 }
-            ]
-        }
+            },
+            {
+                "id": "simulated_lead_002",
+                "threadId": "thread_sim_002",
+                "snippet": "Hello, I need technical support with my Composio webhook integration error.",
+                "payload": {
+                    "headers": [
+                        {"name": "Subject", "value": "Bug / Error in Webhook Integration"},
+                        {"name": "From", "value": "dev@techstartup.example.com"}
+                    ]
+                }
+            }
+        ]
 
-    messages = fetch_res.get("messages", [])
-    if not messages and isinstance(fetch_res.get("raw"), str):
-        messages = [{"id": "simulated_lead_001", "snippet": fetch_res.get("raw")[:200], "payload": {"headers": [{"name": "Subject", "value": "Inquiry"}, {"name": "From", "value": "lead@example.com"}]}}]
-
-    print(f"📥 Found {len(messages)} message(s) to triage.")
+    print(f"📥 Processing {len(messages)} message(s) for triage.")
     
     results = []
     for msg in messages:
